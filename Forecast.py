@@ -63,6 +63,22 @@ finally:
     # Luego de instalarse se importa nuevamente la libreria
     import pandas as pd
 
+try:
+
+    import statsmodels.api as sm
+
+except ImportError:
+    print("No posee la libreria 'statsmodels.api'. El programa se encuentra instalandolo...\n")
+
+    # Si no existe la libreria, se instala
+    subprocess.call([sys.executable, "-m", "pip", "install", 'statsmodels'])
+    print("Instalación terminada....")
+
+finally:
+    # Luego de instalarse se importa nuevamente la libreria
+    import statsmodels.api as sm
+
+from statsmodels.tsa.seasonal import seasonal_decompose
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objs as go
@@ -96,6 +112,7 @@ def generate_table(dataframe, max_rows=10):
             ]) for i in range(min(len(dataframe), max_rows))]
         ),striped=True, bordered=True, hover=True,
     )
+
 
 
 DATA_VENTAS_TOTALES = datamanager.getVentasProducto()
@@ -177,11 +194,26 @@ app.layout = html.Div(children=[
                                     placeholder='Filtro de Producto',
                                 )
                             ),
+
+                            # dbc.Col(
+                            #     dcc.Dropdown(
+                            #         id='seleccion_modelo',
+                            #         options=[
+                            #             {'label': 'Adición', 'value': 'additive'},
+                            #             {'label': 'Multiplicativo', 'value': 'multiplicative'}
+                            #         ],
+                            #         multi=False,
+                            #         #value='017027',
+                            #         placeholder='Filtro Evaluación Modelo',
+                            #     )
+                            # ),
                             dbc.Col(
                                 html.Div(id='serie-tiempo'),
                             ),
                         ],
                         ),
+
+
 
 
                         #dbc.Button("Click here", color="success"),
@@ -254,7 +286,22 @@ def display_table(dropdown_value):
     [dash.dependencies.Input('seleccion_producto', 'value')])
 def display_serieTiempo(dropdown_value):
 
+
     DATA_SERIE = datamanager.getFechasVentasProducto(dropdown_value)
+
+    # Descomponiendo datos
+    data_descomposition = DATA_SERIE.copy(deep=False)
+    data_descomposition = data_descomposition.set_index('fecha')
+
+    FRECUENCIA = int(DATA_SERIE['ventas'].count()/2)
+
+    descomposition = seasonal_decompose(data_descomposition, period=FRECUENCIA, model='multiplicative')
+
+    data_trend = pd.DataFrame(descomposition.trend)
+    data_seasonal = pd.DataFrame(descomposition.seasonal)
+    data_resid = pd.DataFrame(descomposition.resid)
+
+    #Obteniendo el nombre del producto seleccionado
 
     nombre_producto = DATA_VENTAS_TOTALES[DATA_VENTAS_TOTALES['codigo_producto'] == dropdown_value]['Producto']
 
@@ -264,30 +311,19 @@ def display_serieTiempo(dropdown_value):
                         yaxis_title = 'Ventas (Q)',
                         height=700
                        )
-    
-    trace1 = go.Scatter(x=DATA_SERIE.fecha, y=DATA_SERIE.ventas)
 
-    """
-    return (
-        dbc.Row([
-            dbc.Col(
-                html.Div(
-                    dcc.Graph(id='graph', figure={
-                        'data': [trace1],
-                        'layout': cLayout
+    trace1 = go.Scatter(x=DATA_SERIE.fecha, y=DATA_SERIE.ventas,name='Observado')
+    trace2 = go.Scatter(x=data_trend.index, y=data_trend.trend,name='Tendencia',visible='legendonly')
+    trace3 = go.Scatter(x=data_seasonal.index, y=data_seasonal.seasonal,name='Tendencia Estacional',visible='legendonly')
+    trace4 = go.Scatter(x=data_resid.index, y=data_resid.resid,name='Residuos',visible='legendonly')
 
-                    })
-                )
-            )
-        ])
-    )
-    """
+
     return (
         html.Div(
             dcc.Graph(id='graph', figure={
-                      'data': [trace1],
-                      'layout': cLayout
-            })
+                'data': [trace1,trace2,trace3,trace4],
+                'layout': cLayout
+            }),
         )
     )
 
