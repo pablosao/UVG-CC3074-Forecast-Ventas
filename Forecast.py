@@ -84,6 +84,13 @@ import dash_html_components as html
 import plotly.graph_objs as go
 import plotly.express as px
 import datamanager
+import warnings
+import itertools
+import numpy as np
+
+warnings.filterwarnings("ignore")
+warnings.warn("deprecated", DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 PESTANIA_1 = \
@@ -97,7 +104,7 @@ PESTANIA_2 = \
 """
 La serie de tiempo es una secuencia de observaciones de una variable que se mide en puntos sucesivos del tiempo
 o en periodos determinados. Donde exploramos los datos en una grafica de serie de tiempo e identificar su patron,
-ya que las condiciones de un negocio pueden cambiar, haciendo que el patron de la serie cambie ().
+ya que las condiciones de un negocio pueden cambiar, haciendo que el patron de la serie cambie (Anderson et al., 2016).
 """
 
 def generate_table(dataframe, max_rows=10):
@@ -169,19 +176,27 @@ app.layout = html.Div(children=[
                             )
                         ],
                         ),
-
+                        html.Br(),
                         html.Div(id='tabla-venta-productos'),
                         #dbc.Button("Click here", color="success"),
                     ]
                 ),
                 className="mt-3",
             )
-        ), label="Explorando Datos",disabled=False),
+        ), label="Análisis Exploratorio",disabled=False),
         dbc.Tab(
             dbc.Card(
                 dbc.CardBody(
                     [
                         html.P(PESTANIA_2,className="card-text"),
+                        dbc.Row([
+                            dbc.Col(
+                                html.Div(children='''Producto:'''),
+                            ),
+                            dbc.Col(
+                                html.Div(children='''Modelo:'''),
+                            ),
+                        ]),
                         dbc.Row([
                             dbc.Col(
                                 dcc.Dropdown(
@@ -195,24 +210,28 @@ app.layout = html.Div(children=[
                                 )
                             ),
 
-                            # dbc.Col(
-                            #     dcc.Dropdown(
-                            #         id='seleccion_modelo',
-                            #         options=[
-                            #             {'label': 'Adición', 'value': 'additive'},
-                            #             {'label': 'Multiplicativo', 'value': 'multiplicative'}
-                            #         ],
-                            #         multi=False,
-                            #         #value='017027',
-                            #         placeholder='Filtro Evaluación Modelo',
-                            #     )
-                            # ),
                             dbc.Col(
-                                html.Div(id='serie-tiempo'),
+                                dcc.Dropdown(
+                                    id='seleccion_modelo',
+                                    options=[
+                                        {'label': 'Adición', 'value': 'additive'},
+                                         {'label': 'Multiplicativo', 'value': 'multiplicative'}
+                                    ],
+                                    multi=False,
+                                    #value='additive',
+                                    placeholder='Filtro Evaluación Modelo',
+                                )
                             ),
+                            #dbc.Col(
+                            #    html.Div(id='serie-tiempo'),
+                            #),
                         ],
                         ),
+                        html.Br(),
 
+                        #dbc.Row([
+                            html.Div(id='serie-tiempo'),
+                        #]),
 
 
 
@@ -221,11 +240,11 @@ app.layout = html.Div(children=[
                 ),
                 className="mt-3",
             )
-            ,label="Análisis Exploratorio",disabled=False),
+            ,label="Forecast",disabled=False),
 
-        dbc.Tab(
-            "This tab's content is never seen", label="Forecast", disabled=True
-        ),
+        # dbc.Tab(
+        #     "This tab's content is never seen", label="Forecast", disabled=True
+        # ),
     ])
 
 ])
@@ -283,24 +302,106 @@ def display_table(dropdown_value):
 
 @app.callback(
     dash.dependencies.Output('serie-tiempo', 'children'),
-    [dash.dependencies.Input('seleccion_producto', 'value')])
-def display_serieTiempo(dropdown_value):
+    [dash.dependencies.Input('seleccion_producto', 'value'),
+     dash.dependencies.Input('seleccion_modelo', 'value') ])
+def display_serieTiempo(dropdown_value,dropdown_modelo):
+
+
+    modelo_evaluar = 'additive'
+    tendencia_visible = 'legendonly'
+
+    # Si el dato es de tipo 'NoneType' deja el valor inicial por defecto
+    # de lo contrario asigna el modelo seleccionado
+    if(isinstance( dropdown_modelo, str )):
+        modelo_evaluar = dropdown_modelo
+        tendencia_visible = True
 
 
     DATA_SERIE = datamanager.getFechasVentasProducto(dropdown_value)
+
+
+    #min_date = DATA_SERIE.sort_values(by=['fecha']).head(5)['fecha'].tolist()[0]
+
+
 
     # Descomponiendo datos
     data_descomposition = DATA_SERIE.copy(deep=False)
     data_descomposition = data_descomposition.set_index('fecha')
 
+    data_forecast = DATA_SERIE.copy(deep=False)
+    data_forecast = data_forecast.set_index('fecha')
+
     FRECUENCIA = int(DATA_SERIE['ventas'].count()/2)
 
-    descomposition = seasonal_decompose(data_descomposition, period=FRECUENCIA, model='multiplicative')
+    descomposition = seasonal_decompose(data_descomposition, period=FRECUENCIA, model=modelo_evaluar)
 
     data_trend = pd.DataFrame(descomposition.trend)
     data_seasonal = pd.DataFrame(descomposition.seasonal)
     data_resid = pd.DataFrame(descomposition.resid)
 
+    '''
+            VALIDACION FORECAST
+    '''
+
+    p = d = q = range(0, 2)
+    pdq = list(itertools.product(p, d, q))
+    seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
+
+    #df = pd.DataFrame(columns=['order', 'param_seasonal', 'AIC'])
+    df = pd.DataFrame(columns=['Orden', 'Estacionalidad', 'Ruido (AIC)'])
+    #print(data_forecast)
+
+    for param in pdq:
+        for param_seasonal in seasonal_pdq:
+            try:
+
+                mod = sm.tsa.statespace.SARIMAX(data_forecast,
+                                                order=param,
+                                                seasonal_order=param_seasonal,
+                                                trend='ct',
+                                                enforce_stationarity=False,
+                                                enforce_invertibility=False,
+                                                measurement_error=True)
+                results = mod.fit()
+                df = df.append({'Orden': param, 'Estacionalidad': param_seasonal, 'Ruido (AIC)': results.aic},
+                               ignore_index=True)
+                # print('ARIMA{0}x{1}12 - AIC:{2}'.format(param, param_seasonal, results.aic))
+            except:
+                continue
+
+    df = df.sort_values(by=['Ruido (AIC)']).head(5)
+    # print(df)
+    # print(df['param'].tolist()[0])
+
+    '''
+    Param: (1, 1, 1)
+    seasonal: (1, 1, 0, 12)
+    '''
+    var_order_param =  df['Orden'].tolist()[0]
+    var_seasonal_order = df['Estacionalidad'].tolist()[0]
+
+    mod = sm.tsa.statespace.SARIMAX(data_forecast,
+                                    order=var_order_param,
+                                    seasonal_order= var_seasonal_order,
+                                    trend='ct',
+                                    enforce_stationarity=False,
+                                    enforce_invertibility=False,
+                                    measurement_error=True)
+
+    results = mod.fit()
+
+
+
+    pred = results.get_prediction(start=pd.to_datetime(pd.to_datetime('2014-01-01')), dynamic=False)
+    pred_ci = pred.conf_int()
+
+    #pred_ci['diferencia'] = pred_ci['upper ventas'] - pred_ci['lower ventas']
+
+    pred_ci['diferencia'] = pred_ci.apply(lambda x: (x['upper ventas'] + x['lower ventas'])/2, axis=1)
+
+    '''
+        FIN VALIDACION FORECAST
+    '''
     #Obteniendo el nombre del producto seleccionado
 
     nombre_producto = DATA_VENTAS_TOTALES[DATA_VENTAS_TOTALES['codigo_producto'] == dropdown_value]['Producto']
@@ -312,16 +413,56 @@ def display_serieTiempo(dropdown_value):
                         height=700
                        )
 
-    trace1 = go.Scatter(x=DATA_SERIE.fecha, y=DATA_SERIE.ventas,name='Observado')
-    trace2 = go.Scatter(x=data_trend.index, y=data_trend.trend,name='Tendencia',visible='legendonly')
-    trace3 = go.Scatter(x=data_seasonal.index, y=data_seasonal.seasonal,name='Tendencia Estacional',visible='legendonly')
-    trace4 = go.Scatter(x=data_resid.index, y=data_resid.resid,name='Residuos',visible='legendonly')
+    trace1 = go.Scatter(x=DATA_SERIE.fecha, y=DATA_SERIE.ventas,name='Ventas Reales (Mensual)')
+    trace2 = go.Scatter(x=data_trend.index, y=data_trend.trend,name='Tendencia de Venta',
+                        visible='legendonly')
+    trace3 = go.Scatter(x=data_seasonal.index, y=data_seasonal.seasonal,
+                        name='Tendencia Estacional de Venta',visible=tendencia_visible)
+    trace4 = go.Scatter(x=data_resid.index, y=data_resid.resid,name='Residuos',
+                        visible='legendonly')
 
+    # print(fechas_prediccion)
+    # print(pred2[0].to_list())
+
+    '''
+        TRACE FORECAST
+    '''
+
+    trace5 = go.Scatter(x=(pred_ci.index).to_list(), y=pred_ci['upper ventas'], name='Margen Positivo',
+                        showlegend=True, fill='tozeroy', line=dict(color='rgb(155,155,155)'))
+
+    trace6 = go.Scatter(x=(pred_ci.index).to_list(), y=pred_ci['lower ventas'],name='Margen Negativo', #showlegend=True
+                        visible='legendonly',fill='tozeroy',line=dict(color='rgb(155,155,155)'))
+
+
+    trace7 = go.Scatter(x=(pred_ci.index).to_list(), y=pred_ci['diferencia'], name='Prediccion',
+                        showlegend=True,line=dict(color='rgb(255,102,0)'))
+
+    # print(pred_ci)
 
     return (
+        dbc.Row([
+            html.H2('Selección de Combinaciones de Parámetros Estacionales'),
+        ],align="center",),
+
+        dbc.Row([
+            dbc.Col(
+                html.Div(
+                    '''En los modelos de serie de tiempo es muy común utilizar el método de promedios 
+                    móviles, el cual utiliza los valores de los datos más recientes para pronosticar 
+                    una serie de tiempo del periodo siguiente. Este es conocido como ARIMA, el cual 
+                    utiliza tres parámetros que explican la estacionalidad, tendencia y ruido de los 
+                    datos [ ARIMA( p , d , q ) ] (Anderson et al., 2016; Li, 2018), '''
+                ),
+            ),
+            dbc.Col(
+                html.Div(generate_table(df)),
+            ),
+        ]),
+
         html.Div(
             dcc.Graph(id='graph', figure={
-                'data': [trace1,trace2,trace3,trace4],
+                'data': [trace1,trace2,trace3,trace4,trace5,trace6,trace7],
                 'layout': cLayout
             }),
         )

@@ -59,7 +59,7 @@ def getVentasProducto():
     FROM
         ventas
     WHERE
-        fecha BETWEEN '2004-01-01 00:00:00.000' AND '2013-01-01 00:00:00.000'
+        fecha BETWEEN '2004-01-01 00:00:00.000' AND '2014-12-31 00:00:00.000'
     AND LEFT(codigo_producto, 2) <> 'DF'
     GROUP BY
         codigo_producto, Producto
