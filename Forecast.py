@@ -126,6 +126,8 @@ DATA_VENTAS_TOTALES = datamanager.getVentasProducto()
 
 pre_opciones = []
 
+timeSerie_producto = ['012397','017027','014620','015212']
+
 control = 0
 
 for row in DATA_VENTAS_TOTALES.iterrows():
@@ -149,7 +151,7 @@ app.title = 'Forecast Ventas'
 
 #Creando Layout de la aplicacion
 app.layout = html.Div(children=[
-    html.H1(children='Análisis de Forecast de Ventas'),
+    html.H1(children='Forecast de Ventas Netas'),
 
     html.Div(children='''
         
@@ -179,6 +181,27 @@ app.layout = html.Div(children=[
                         html.Br(),
                         html.Div(id='tabla-venta-productos'),
                         #dbc.Button("Click here", color="success"),
+
+                        dbc.Row([
+                            dbc.Col(
+                                # Dropdown para seleccionar productos para ploteo de
+                                # serie de tiempo
+                                dcc.Dropdown(
+                                    id='a_serie_productos',
+                                    options=[
+                                        {'label': i[1]['Producto'], 'value': i[1]['codigo_producto']} for i in DATA_VENTAS_TOTALES.iterrows()
+                                    ],
+                                    multi=True,
+                                    value=timeSerie_producto,
+                                    placeholder='Filtro de Productos.',
+                                )
+                            )
+                        ],
+                        ),
+
+                        html.Br(),
+                        html.Div(id='serie-venta-productos'),
+
                     ]
                 ),
                 className="mt-3",
@@ -250,6 +273,49 @@ app.layout = html.Div(children=[
 ])
 
 @app.callback(
+    dash.dependencies.Output('serie-venta-productos', 'children'),
+    [dash.dependencies.Input('a_serie_productos', 'value')])
+def display_table(dropdown_serieProductos):
+
+    if(len(dropdown_serieProductos) > 0):
+        #Lista que contendra las graficas
+        trace_producto = []
+
+        for producto in dropdown_serieProductos:
+            
+            DATOS_PRODUCTOS = datamanager.getAllFechasVentasProducto(producto)
+
+            trace_custom = go.Scatter(x=DATOS_PRODUCTOS.fecha, y=DATOS_PRODUCTOS.ventas, name='Producto: {0}'.format(producto))
+            trace_producto.append(trace_custom)
+
+        return (
+            dbc.Row([
+
+                dbc.Col(
+                    html.Div(
+                        dcc.Graph(id='graph', figure={
+                            'data': trace_producto,
+                            'layout':
+                                go.Layout(title='Serie de Tiempo de Productos',
+                                          barmode='stack')
+                        })
+                    )
+                )
+            ])
+        )
+
+    return (
+        dbc.Row([
+            dbc.Col(
+                html.Div(
+                    '''Selecione los Productos para mostrar la grafica'''
+                ),
+            ),
+        ])
+    )
+
+
+@app.callback(
     dash.dependencies.Output('tabla-venta-productos', 'children'),
     [dash.dependencies.Input('dropdown_productos', 'value')])
 def display_table(dropdown_value):
@@ -267,7 +333,7 @@ def display_table(dropdown_value):
                         dcc.Graph(id='graph', figure={
                             'data': [trace1],
                             'layout':
-                                go.Layout(title='Unidades Totales vendidas',
+                                go.Layout(title='Unidades Totales Vendidas del 2010 al 2014',
                                           barmode='stack')
                         })
                     )
@@ -279,7 +345,7 @@ def display_table(dropdown_value):
 
     dff = DATA_VENTAS_TOTALES[DATA_VENTAS_TOTALES.codigo_producto.str.contains('|'.join(dropdown_value))]
 
-    trace1 = go.Bar(x=dff.Producto, y=dff.total_ventas, name='Ventas totales')
+    trace1 = go.Bar(x=dff.Producto, y=dff.total_ventas, name='Ventas Totales')
 
     return (
         dbc.Row([
@@ -292,7 +358,7 @@ def display_table(dropdown_value):
                     dcc.Graph(id='graph', figure={
                         'data': [trace1],
                         'layout':
-                            go.Layout(title='Unidades Totales vendidas',
+                            go.Layout(title='Unidades Totales Vendidas del 2010 al 2014',
                                       barmode='stack')
                     })
                 )

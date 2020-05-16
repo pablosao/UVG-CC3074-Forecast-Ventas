@@ -103,3 +103,31 @@ def getFechasVentasProducto(codigo_producto):
         print(str(e))
 
     return data
+
+def getAllFechasVentasProducto(codigo_producto):
+    """
+    Metodo para obtener las ventas promedios mensuales del poducto deseado
+    :param codigo_producto:
+    :return:
+    """
+    Qfechaventas_producto = """
+        SELECT
+             fecha
+            ,avg(total_vendido) AS ventas
+        FROM 
+            ventas
+        WHERE
+            codigo_producto = '{0}'
+        GROUP BY fecha
+        ORDER BY
+            fecha ASC
+        """.format(codigo_producto)
+
+    data = pd.DataFrame()
+
+    try:
+        data = pd.read_sql(Qfechaventas_producto, getConnection())
+    except Exception as e:
+        print(str(e))
+
+    return data
