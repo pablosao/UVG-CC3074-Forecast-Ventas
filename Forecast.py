@@ -103,8 +103,8 @@ de la empresa, seleccionando un producto para realizar el análisis. Seleccionan
 PESTANIA_2 = \
 """
 La serie de tiempo es una secuencia de observaciones de una variable que se mide en puntos sucesivos del tiempo
-o en periodos determinados. Donde exploramos los datos en una grafica de serie de tiempo e identificar su patron,
-ya que las condiciones de un negocio pueden cambiar, haciendo que el patron de la serie cambie (Anderson et al., 2016).
+o en periodos determinados. Donde exploramos los datos en una gráfica de serie de tiempo e identificar su patrón,
+ya que las condiciones de un negocio pueden cambiar, haciendo que el patrón de la serie cambie (Anderson et al., 2016).
 """
 
 def generate_table(dataframe, max_rows=10):
@@ -278,6 +278,12 @@ app.layout = html.Div(children=[
 def display_table(dropdown_serieProductos):
 
     if(len(dropdown_serieProductos) > 0):
+        
+        cLayout = go.Layout(title='Serie de Tiempo de Productos"',
+                       # Same x and first y
+                        xaxis_title = 'Fecha',
+                        yaxis_title = 'Ventas (Q)'
+                       )
         #Lista que contendra las graficas
         trace_producto = []
 
@@ -295,9 +301,7 @@ def display_table(dropdown_serieProductos):
                     html.Div(
                         dcc.Graph(id='graph', figure={
                             'data': trace_producto,
-                            'layout':
-                                go.Layout(title='Serie de Tiempo de Productos',
-                                          barmode='stack')
+                            'layout':cLayout
                         })
                     )
                 )
@@ -518,7 +522,7 @@ def display_serieTiempo(dropdown_value,dropdown_modelo):
                     móviles, el cual utiliza los valores de los datos más recientes para pronosticar 
                     una serie de tiempo del periodo siguiente. Este es conocido como ARIMA, el cual 
                     utiliza tres parámetros que explican la estacionalidad, tendencia y ruido de los 
-                    datos [ ARIMA( p , d , q ) ] (Anderson et al., 2016; Li, 2018), '''
+                    datos [ ARIMA( p , d , q ) ] (Anderson et al., 2016; Li, 2018). '''
                 ),
             ),
             dbc.Col(
