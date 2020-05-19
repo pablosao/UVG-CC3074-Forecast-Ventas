@@ -95,9 +95,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 PESTANIA_1 = \
 """
-Iniciaremos identificando los 10 productos con mayor numero de ventas en la historia de ventas
-de la empresa, seleccionando un producto para realizar el análisis. Seleccionando el producto
-017027 - Az primera 15x15 Blanco 1 FUJIN.
+Se inició identificando los 10 productos con mayor número de ventas. Estos se recolectaron del Historial de 
+Ventas proporcionado por la empresa. Se tomó como parámetro de análisis el producto:  
+017027 - Az primera 15x15 Blanco 1 FUJIN..
 """
 
 PESTANIA_2 = \
@@ -539,4 +539,4 @@ def display_serieTiempo(dropdown_value,dropdown_modelo):
     )
 
 if __name__ == '__main__':
-    app.run_server(debug=True,port=5000)
+    app.run_server(debug=False,port=5000)
