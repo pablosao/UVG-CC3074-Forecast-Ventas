@@ -152,10 +152,9 @@ app.title = 'Forecast Ventas'
 #Creando Layout de la aplicacion
 app.layout = html.Div(children=[
     html.H1(children='Forecast de Ventas Netas'),
-
-    html.Div(children='''
-        
-    '''),
+    html.H4(children='Pablo Sao & Mercedes Retolaza'),
+    html.Br(),
+    #html.Div(children=''''''),
 
     dbc.Tabs([
         dbc.Tab((
@@ -220,6 +219,7 @@ app.layout = html.Div(children=[
                                 html.Div(children='''Modelo:'''),
                             ),
                         ]),
+                        html.Br(),
                         dbc.Row([
                             dbc.Col(
                                 dcc.Dropdown(
@@ -241,7 +241,7 @@ app.layout = html.Div(children=[
                                          {'label': 'Multiplicativo', 'value': 'multiplicative'}
                                     ],
                                     multi=False,
-                                    #value='additive',
+                                    value='additive',
                                     placeholder='Filtro Evaluación Modelo',
                                 )
                             ),
@@ -402,7 +402,7 @@ def display_serieTiempo(dropdown_value,dropdown_modelo):
     data_forecast = data_forecast.set_index('fecha')
 
     FRECUENCIA = int(DATA_SERIE['ventas'].count()/2)
-
+    
     descomposition = seasonal_decompose(data_descomposition, period=FRECUENCIA, model=modelo_evaluar)
 
     data_trend = pd.DataFrame(descomposition.trend)
@@ -420,7 +420,7 @@ def display_serieTiempo(dropdown_value,dropdown_modelo):
     #df = pd.DataFrame(columns=['order', 'param_seasonal', 'AIC'])
     df = pd.DataFrame(columns=['Orden', 'Estacionalidad', 'Ruido (AIC)'])
     #print(data_forecast)
-
+    
     for param in pdq:
         for param_seasonal in seasonal_pdq:
             try:
