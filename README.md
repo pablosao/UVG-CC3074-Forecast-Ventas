@@ -1,8 +1,10 @@
-# UVG-CC3074-Forecast-Ventas
-Proyecto de mineria de datos, donde se investigo sobre el tema para realizar un forecast de ventas
+# Forecast Ventas
+Proyecto para la clase de mineria de datos de la Universidad del Valle, para realizar una predicción de ventas netas utilizando un forecast de series de tiempo.
 
-Realizado por: 
-* María Mercedes Retolaza 
+# Autores 
 * Pablo Sao 
+* María Mercedes Retolaza
 
 Para correr el programa: python forecast.py 
+
+# Referencias
